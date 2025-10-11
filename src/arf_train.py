@@ -25,9 +25,11 @@ encoder = LabelEncoder()
 y_encoded = encoder.fit_transform(y)
 
 # ============================================================
-# 3. MLflow Setup
+# 3. MLflow Setup (SAFE for GitHub Actions)
 # ============================================================
-mlflow.set_tracking_uri("file:///mlruns")
+mlruns_dir = Path("mlruns")
+mlruns_dir.mkdir(exist_ok=True)
+mlflow.set_tracking_uri(f"file://{mlruns_dir.resolve()}")   # ✅ relative path (no permission issue)
 mlflow.set_experiment("IDS_ARF_Base")
 
 # ============================================================
@@ -41,6 +43,8 @@ with mlflow.start_run(run_name=f"base_{int(time.time())}"):
     mlflow.log_param("dataset_path", str(csv_path))
     mlflow.log_param("algorithm", "AdaptiveRandomForest")
     mlflow.log_param("num_samples", len(data))
+    mlflow.log_param("n_models", 10)
+    mlflow.log_param("seed", 42)
 
     print("🚀 Starting base training...")
     for i, (xi, yi) in enumerate(zip(X.to_dict(orient="records"), y_encoded)):
@@ -63,7 +67,7 @@ with mlflow.start_run(run_name=f"base_{int(time.time())}"):
     print(f"✅ Final Accuracy: {final_acc:.4f}")
 
 # ============================================================
-# 5. Save artifacts
+# 5. Save artifacts (model + preprocessing)
 # ============================================================
 joblib.dump(model, models_dir / "arf_base.pkl")
 joblib.dump(scaler, models_dir / "scaler.pkl")
@@ -73,4 +77,4 @@ mlflow.log_artifact(str(models_dir / "arf_base.pkl"))
 mlflow.log_artifact(str(models_dir / "scaler.pkl"))
 mlflow.log_artifact(str(models_dir / "label_encoder.pkl"))
 
-print("🎯 Training completed. Artifacts saved.")
+print("🎯 Training completed. Artifacts saved successfully.")
