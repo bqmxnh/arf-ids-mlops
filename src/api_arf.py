@@ -54,15 +54,15 @@ def predict(flow: Flow):
         # 🧠 Always Learn (pseudo-label nếu không có label thật)
         # -----------------------------
         if flow.label:
-            # Có nhãn thật → học bình thường
+            # Có nhãn thật → học với label thật
             y_true = encoder.transform([flow.label])[0]
             used_label = flow.label
         else:
-            # Không có nhãn → dùng dự đoán làm pseudo-label
+            # Không có nhãn → pseudo-label
             y_true = int(y_pred)
             used_label = y_label
 
-        # Học dần luôn
+        # Học dần
         model.learn_one(x_scaled, int(y_true))
         update_counter += 1
 
@@ -70,19 +70,18 @@ def predict(flow: Flow):
         if update_counter % 100 == 0:
             joblib.dump(model, MODEL_PATH)
 
-        # Ghi log stream (với label thật hoặc pseudo)
+        # Ghi log stream (chỉ ghi label)
         STREAM_LOG.parent.mkdir(exist_ok=True)
         with open(STREAM_LOG, "a", newline="") as f:
             writer = csv.writer(f)
             if f.tell() == 0:
-                writer.writerow(list(flow.features.keys()) + ["Label", "is_pseudo"])
-            writer.writerow(list(flow.features.values()) + [used_label, not bool(flow.label)])
+                writer.writerow(list(flow.features.keys()) + ["Label"])
+            writer.writerow(list(flow.features.values()) + [used_label])
 
         latency = (time.time() - start_time) * 1000
         return {
             "prediction": y_label,
             "used_label": used_label,
-            "is_pseudo": not bool(flow.label),
             "latency_ms": round(latency, 3),
         }
 
