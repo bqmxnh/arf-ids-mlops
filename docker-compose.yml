@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.17.0
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    command: mlflow ui --host 0.0.0.0 --port 5000
+
+  ids_api:
+    build: .
+    container_name: ids_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+      - ./src:/app/src
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+
+  collector:
+    build: .
+    container_name: ids_collector
+    command: python src/collector_nfstream.py
+    network_mode: "host"
+    depends_on:
+      - ids_api

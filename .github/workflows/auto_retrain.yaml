@@ -1,0 +1,35 @@
+name: Auto Retrain & Redeploy
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */12 * * *"  # retrain mỗi 12 tiếng
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - run: pip install -r requirements.txt
+
+      - name: Retrain base model
+        run: python src/base_training.py
+
+      - name: Commit new model
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add models/
+          git commit -m "Auto retrain model $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
+          git push
+
+      - name: Trigger redeploy
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: redeploy_request

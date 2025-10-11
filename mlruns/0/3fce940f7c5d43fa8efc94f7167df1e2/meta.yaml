@@ -1,0 +1,15 @@
+artifact_uri: file:///D:/proj/mlruns/0/3fce940f7c5d43fa8efc94f7167df1e2/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 3fce940f7c5d43fa8efc94f7167df1e2
+run_name: unequaled-fox-591
+run_uuid: 3fce940f7c5d43fa8efc94f7167df1e2
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1759987950208
+status: 1
+tags: []
+user_id: quocm

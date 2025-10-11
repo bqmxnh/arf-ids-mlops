@@ -1,0 +1,16 @@
+artifact_uri: file:///D:/proj/mlruns/805312633800276616/3ead0ed3d282460d81165eacf0e66d0f/artifacts
+deleted_time: 1759987659242
+end_time: 1759986491085
+entry_point_name: ''
+experiment_id: '805312633800276616'
+lifecycle_stage: deleted
+run_id: 3ead0ed3d282460d81165eacf0e66d0f
+run_name: base_arf_syn_cleaned
+run_uuid: 3ead0ed3d282460d81165eacf0e66d0f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1759986200442
+status: 4
+tags: []
+user_id: quocm
