@@ -1,0 +1,50 @@
+name: Drift-based Retrain & Deploy
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"  # Check drift mỗi 12h
+  workflow_dispatch:
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Check drift flag
+        id: drift
+        run: |
+          if [ -f dataset/drift_trigger.flag ]; then
+            echo "Drift detected!"
+            echo "drift_found=true" >> $GITHUB_ENV
+          else
+            echo "No drift."
+            echo "drift_found=false" >> $GITHUB_ENV
+          fi
+
+      - name: Merge and retrain if drift
+        if: env.drift_found == 'true'
+        run: |
+          python src/merge_streaming.py
+          python src/retrain_from_stream.py
+          rm -f dataset/drift_trigger.flag
+
+      - name: Commit new model
+        if: env.drift_found == 'true'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add models/
+          git commit -m "Auto retrain after drift $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
+          git push
+
+      - name: Trigger Render Deploy
+        if: env.drift_found == 'true'
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl -X POST "$RENDER_DEPLOY_HOOK"

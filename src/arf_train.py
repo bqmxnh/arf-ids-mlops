@@ -55,7 +55,7 @@ y_encoded = encoder.fit_transform(y)
 # 4️⃣ MLflow setup (safe for GitHub Actions / Docker)
 # ============================================================
 # Use relative path instead of /mlruns to avoid PermissionError
-mlflow.set_tracking_uri(f"file://{mlruns_dir.resolve()}")
+mlflow.set_tracking_uri("https://mlflow-service-n8ab.onrender.com")
 mlflow.set_experiment("IDS_ARF_Base")
 
 # ============================================================
