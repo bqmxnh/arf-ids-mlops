@@ -11,29 +11,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # ============================
+      # 1️⃣ Checkout repo
+      # ============================
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ============================
+      # 2️⃣ Setup Docker build environment
+      # ============================
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to DockerHub
+      # ============================
+      # 3️⃣ Login to DockerHub
+      # ============================
+      - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push image
+      # ============================
+      # 4️⃣ Build & push image to DockerHub
+      # ============================
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ secrets.DOCKERHUB_USER }}/arf-ids-mlops:latest
 
-      # (Optional) Trigger Render redeploy
-      - name: Deploy to Render
-        if: ${{ secrets.RENDER_API_KEY != '' }}
+      # ============================
+      # 5️⃣ Trigger Render Deploy Hook
+      # ============================
+      - name: Trigger Render Deploy Hook
+        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
         run: |
-          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
-          -H "Accept: application/json" \
-          -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+          echo "🚀 Triggering Render deploy..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          echo "✅ Deploy triggered successfully on Render."
