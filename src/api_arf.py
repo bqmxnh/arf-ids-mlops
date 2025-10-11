@@ -50,33 +50,45 @@ def predict(flow: Flow):
         y_pred = model.predict_one(x_scaled)
         y_label = encoder.inverse_transform([int(y_pred)])[0]
 
-        # Learn incrementally if label available
+        # -----------------------------
+        # 🧠 Always Learn (pseudo-label nếu không có label thật)
+        # -----------------------------
         if flow.label:
+            # Có nhãn thật → học bình thường
             y_true = encoder.transform([flow.label])[0]
-            model.learn_one(x_scaled, int(y_true))
-            update_counter += 1
+            used_label = flow.label
+        else:
+            # Không có nhãn → dùng dự đoán làm pseudo-label
+            y_true = int(y_pred)
+            used_label = y_label
 
-            # Save model every 100 updates
-            if update_counter % 100 == 0:
-                joblib.dump(model, MODEL_PATH)
+        # Học dần luôn
+        model.learn_one(x_scaled, int(y_true))
+        update_counter += 1
 
-            # Append to stream dataset
-            STREAM_LOG.parent.mkdir(exist_ok=True)
-            with open(STREAM_LOG, "a", newline="") as f:
-                writer = csv.writer(f)
-                if f.tell() == 0:
-                    writer.writerow(list(flow.features.keys()) + ["Label"])
-                writer.writerow(list(flow.features.values()) + [flow.label])
+        # Save model mỗi 100 lần update
+        if update_counter % 100 == 0:
+            joblib.dump(model, MODEL_PATH)
+
+        # Ghi log stream (với label thật hoặc pseudo)
+        STREAM_LOG.parent.mkdir(exist_ok=True)
+        with open(STREAM_LOG, "a", newline="") as f:
+            writer = csv.writer(f)
+            if f.tell() == 0:
+                writer.writerow(list(flow.features.keys()) + ["Label", "is_pseudo"])
+            writer.writerow(list(flow.features.values()) + [used_label, not bool(flow.label)])
 
         latency = (time.time() - start_time) * 1000
         return {
             "prediction": y_label,
-            "updated": bool(flow.label),
-            "latency_ms": round(latency, 3)
+            "used_label": used_label,
+            "is_pseudo": not bool(flow.label),
+            "latency_ms": round(latency, 3),
         }
 
     except Exception as e:
         return {"error": str(e)}
+
 
 # ============================================================
 # 5. Health Endpoint
