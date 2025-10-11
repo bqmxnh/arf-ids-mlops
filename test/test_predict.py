@@ -3,7 +3,10 @@ import requests
 import random
 import time
 
-URL = "http://localhost:8000/predict"
+# ============================================================
+# 🔗 Target API endpoint (Render)
+# ============================================================
+URL = "https://arf-ids-mlops.onrender.com/predict"
 
 # Danh sách feature theo sample của bạn với giá trị mặc định/range để random
 FEATURE_RANGES = {
@@ -86,7 +89,6 @@ FEATURE_RANGES = {
 }
 
 INT_FEATURES = {
-    # features that should be int
     "Total Fwd Packets", "Total Backward Packets",
     "Fwd PSH Flags", "Bwd PSH Flags", "Fwd URG Flags", "Bwd URG Flags",
     "Fwd Header Length", "Bwd Header Length",
@@ -103,28 +105,22 @@ FLOAT_FEATURES = set(FEATURE_RANGES.keys()) - INT_FEATURES
 def make_random_feature(name):
     lo, hi = FEATURE_RANGES[name]
     if name in INT_FEATURES:
-        # special: allow negative init window (-1)
         if lo < 0 and name.startswith("Init_Win"):
             return random.choice([-1, random.randint(0, int(hi))])
         return random.randint(int(lo), int(hi))
     else:
-        # float - pick uniform and round sensibly
         v = random.uniform(float(lo), float(hi))
-        # choose decimals based on magnitude
         if hi > 1000:
             return round(v, 6)
         return round(v, 4)
 
 def make_random_sample():
-    sample = {}
-    for feat in FEATURE_RANGES.keys():
-        sample[feat] = make_random_feature(feat)
-    return sample
+    return {feat: make_random_feature(feat) for feat in FEATURE_RANGES}
 
 def send_sample(sample):
     payload = {"features": sample}
     try:
-        r = requests.post(URL, json=payload, timeout=5.0)
+        r = requests.post(URL, json=payload, timeout=8.0)
         try:
             return r.json()
         except ValueError:
@@ -132,14 +128,14 @@ def send_sample(sample):
     except Exception as e:
         return {"error": str(e)}
 
-def main(n=10, sleep=0.1):
-    print(f"Sending {n} random samples to {URL}")
+def main(n=10, sleep=0.2):
+    print(f"🌐 Sending {n} random samples to {URL}")
     for i in range(n):
         s = make_random_sample()
         resp = send_sample(s)
-        print(f"[{i+1}/{n}] response: {resp}")
+        print(f"[{i+1}/{n}] → {resp}")
         time.sleep(sleep)
 
 if __name__ == "__main__":
-    # change n to number of random samples you want
-    main(n=10, sleep=0.05)
+    # Change n to number of random samples
+    main(n=10, sleep=0.1)
