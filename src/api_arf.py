@@ -1,14 +1,13 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import joblib, time, csv, threading
-from river import forest, preprocessing
+import joblib, time, csv, threading, os
+from river import forest, preprocessing, drift
 from pathlib import Path
-from drift_monitor import monitor
 
 # ============================================================
 # 1️⃣ FastAPI Setup
 # ============================================================
-app = FastAPI(title="ARF IDS API", version="3.0")
+app = FastAPI(title="ARF IDS API", version="3.1")
 
 # ============================================================
 # 2️⃣ Load model & preprocessors
@@ -36,7 +35,24 @@ update_counter = 0
 model_lock = threading.Lock()  # tránh race condition khi nhiều node gửi cùng lúc
 
 # ============================================================
-# 4️⃣ Predict + Online Learn
+# 4️⃣ Drift detection logic (tích hợp trực tiếp)
+# ============================================================
+DRIFT_FLAG_FILE = Path("dataset/drift_trigger.flag")
+ADWIN = drift.ADWIN(delta=0.002)
+
+def monitor(value: float):
+    """Kiểm tra drift, nếu phát hiện thì tạo flag để retrain tự động"""
+    ADWIN.update(value)
+    if ADWIN.drift_detected:
+        print("⚠️ Drift detected!")
+        os.makedirs("dataset", exist_ok=True)
+        with open(DRIFT_FLAG_FILE, "w") as f:
+            f.write(f"Drift at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        return True
+    return False
+
+# ============================================================
+# 5️⃣ Predict + Online Learn
 # ============================================================
 @app.post("/predict")
 def predict(flow: Flow):
@@ -50,7 +66,7 @@ def predict(flow: Flow):
             y_pred = model.predict_one(x_scaled)
             y_label = encoder.inverse_transform([int(y_pred)])[0]
 
-            # 🧩 Check drift
+            # 🧠 check drift
             drift_flag = monitor(float(y_pred))
 
             if flow.label:
@@ -91,13 +107,13 @@ def predict(flow: Flow):
         return {"error": str(e)}
 
 # ============================================================
-# 5️⃣ Health Check
+# 6️⃣ Health Check
 # ============================================================
 @app.get("/")
 def root():
     return {
         "status": "running",
         "model": "ARF IDS",
-        "version": "3.0",
+        "version": "3.1",
         "updates": update_counter
     }
