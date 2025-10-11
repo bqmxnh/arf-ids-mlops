@@ -1,0 +1,35 @@
+name: Auto Retrain ARF Model
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */12 * * *"  # retrain mỗi 12 tiếng
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+
+      - name: Retrain model
+        run: |
+          python src/arf_train.py
+
+      - name: Commit and push model artifacts
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add models/
+          git commit -m "🤖 Auto retrain model $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
+          git push
