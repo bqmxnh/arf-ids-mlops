@@ -33,7 +33,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # ============================
-      # 4️⃣ Build & push image to DockerHub
+      # 4️⃣ Build & push image
       # ============================
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
@@ -46,7 +46,7 @@ jobs:
       # 5️⃣ Trigger Render Deploy Hook
       # ============================
       - name: Trigger Render Deploy Hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+        if: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
           echo "🚀 Triggering Render deploy..."
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
