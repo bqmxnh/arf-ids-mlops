@@ -126,8 +126,8 @@ def predict(flow: Flow):
             with open(STREAM_LOG, "a", newline="") as f:
                 writer = csv.writer(f)
                 if f.tell() == 0:
-                    writer.writerow(list(flow.features.keys()) + ["Label", "is_pseudo"])
-                writer.writerow(list(flow.features.values()) + [used_label, is_pseudo])
+                    writer.writerow(list(flow.features.keys()) + ["Label"])
+                writer.writerow(list(flow.features.values()) + [used_label])
 
         latency_ms = (time.time() - start_time) * 1000
         LATENCY.observe(latency_ms)
