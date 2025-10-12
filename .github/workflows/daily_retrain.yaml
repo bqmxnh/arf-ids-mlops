@@ -1,8 +1,8 @@
-name: Drift-based Retrain & Deploy
+name: Drift-based Retrain & EC2 Deploy
 
 on:
   schedule:
-    - cron: "0 */12 * * *"  # Check drift mỗi 12h
+    - cron: "0 */12 * * *"  # Kiểm tra drift mỗi 12 giờ
   workflow_dispatch:
 
 jobs:
@@ -10,11 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: 3.11
-      - run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
 
       - name: Check drift flag
         id: drift
@@ -27,7 +32,7 @@ jobs:
             echo "drift_found=false" >> $GITHUB_ENV
           fi
 
-      - name: Merge and retrain if drift
+      - name: Merge & Retrain model (if drift)
         if: env.drift_found == 'true'
         run: |
           python src/merge_streaming.py
@@ -43,8 +48,18 @@ jobs:
           git commit -m "Auto retrain after drift $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
           git push
 
-      - name: Trigger Render Deploy
+      # =====================================================
+      # SSH vào EC2 để redeploy Docker stack
+      # =====================================================
+      - name: Deploy updated stack to EC2
         if: env.drift_found == 'true'
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: curl -X POST "$RENDER_DEPLOY_HOOK"
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/arf-ids-mlops
+            git pull origin main
+            docker compose down
+            docker compose up -d --build
