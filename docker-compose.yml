@@ -1,9 +1,7 @@
 version: "3.9"
 
 services:
-  # ============================
   # MLflow Tracking Server
-  # ============================
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.17.0
     container_name: mlflow_server
@@ -13,9 +11,7 @@ services:
       - ./mlruns:/mlruns
     command: mlflow ui --host 0.0.0.0 --port 5000
 
-  # ============================
   # IDS FastAPI Service
-  # ============================
   ids_api:
     build: .
     container_name: ids_api

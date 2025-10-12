@@ -4,14 +4,11 @@ import joblib, time, csv, threading, os
 from river import forest, preprocessing, drift
 from pathlib import Path
 
-# ============================================================
-# 1️⃣ FastAPI Setup
-# ============================================================
+
+# FastAPI Setup
 app = FastAPI(title="ARF IDS API", version="3.1")
 
-# ============================================================
-# 2️⃣ Load model & preprocessors
-# ============================================================
+# Load model & preprocessors
 MODELS_DIR = Path("models")
 MODEL_PATH = MODELS_DIR / "arf_base.pkl"
 SCALER_PATH = MODELS_DIR / "scaler.pkl"
@@ -22,11 +19,9 @@ model = joblib.load(MODEL_PATH)
 scaler = joblib.load(SCALER_PATH)
 encoder = joblib.load(ENCODER_PATH)
 
-print(f"✅ Loaded model & scaler from {MODELS_DIR}")
+print(f"Loaded model & scaler from {MODELS_DIR}")
 
-# ============================================================
-# 3️⃣ Schema
-# ============================================================
+# Schema
 class Flow(BaseModel):
     features: dict
     label: str | None = None
@@ -34,9 +29,7 @@ class Flow(BaseModel):
 update_counter = 0
 model_lock = threading.Lock()  # tránh race condition khi nhiều node gửi cùng lúc
 
-# ============================================================
-# 4️⃣ Drift detection logic (tích hợp trực tiếp)
-# ============================================================
+# Drift detection logic (tích hợp trực tiếp)
 DRIFT_FLAG_FILE = Path("dataset/drift_trigger.flag")
 ADWIN = drift.ADWIN(delta=0.002)
 
@@ -44,16 +37,14 @@ def monitor(value: float):
     """Kiểm tra drift, nếu phát hiện thì tạo flag để retrain tự động"""
     ADWIN.update(value)
     if ADWIN.drift_detected:
-        print("⚠️ Drift detected!")
+        print("Drift detected!")
         os.makedirs("dataset", exist_ok=True)
         with open(DRIFT_FLAG_FILE, "w") as f:
             f.write(f"Drift at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         return True
     return False
 
-# ============================================================
-# 5️⃣ Predict + Online Learn
-# ============================================================
+# Predict + Online Learn
 @app.post("/predict")
 def predict(flow: Flow):
     global update_counter
@@ -66,7 +57,7 @@ def predict(flow: Flow):
             y_pred = model.predict_one(x_scaled)
             y_label = encoder.inverse_transform([int(y_pred)])[0]
 
-            # 🧠 check drift
+            # check drift
             drift_flag = monitor(float(y_pred))
 
             if flow.label:
@@ -106,9 +97,7 @@ def predict(flow: Flow):
     except Exception as e:
         return {"error": str(e)}
 
-# ============================================================
-# 6️⃣ Health Check
-# ============================================================
+# Health Check
 @app.get("/")
 def root():
     return {

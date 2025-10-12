@@ -7,7 +7,7 @@ csv_path = Path("dataset/merged_for_retrain.csv")
 models_dir = Path("models")
 models_dir.mkdir(exist_ok=True)
 
-print(f"📘 Retraining model from {csv_path}")
+print(f"Retraining model from {csv_path}")
 data = pd.read_csv(csv_path)
 X, y = data.drop(columns=["Label"]), data["Label"]
 
@@ -33,11 +33,11 @@ with mlflow.start_run(run_name=f"drift_{int(time.time())}"):
             print(f"{i+1:,} | Acc: {metric.get():.4f}")
 
     acc = metric.get()
-    print(f"✅ Retrain done | Acc={acc:.4f}")
+    print(f"Retrain done | Acc={acc:.4f}")
     mlflow.log_metric("final_acc", acc)
 
 joblib.dump(model, models_dir / "arf_base.pkl")
 joblib.dump(scaler, models_dir / "scaler.pkl")
 joblib.dump(encoder, models_dir / "label_encoder.pkl")
 
-print("🎯 Saved retrained model to models/")
+print("Saved retrained model to models/")
