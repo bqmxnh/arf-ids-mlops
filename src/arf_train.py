@@ -36,7 +36,7 @@ encoder = LabelEncoder()
 y_encoded = encoder.fit_transform(y)
 
 # MLflow setup (safe for GitHub Actions / Docker)
-mlflow.set_tracking_uri("https://mlflow-service-n8ab.onrender.com")
+mlflow.set_tracking_uri("http://mlflow:5000")
 mlflow.set_experiment("IDS_ARF_Base")
 
 # Model initialization

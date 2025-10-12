@@ -17,7 +17,7 @@ scaler = preprocessing.StandardScaler()
 model = forest.ARFClassifier(n_models=10, seed=42)
 metric = metrics.Accuracy()
 
-mlflow.set_tracking_uri("https://mlflow-service-n8ab.onrender.com")
+mlflow.set_tracking_uri("http://mlflow:5000")
 mlflow.set_experiment("IDS_ARF_Retrain")
 
 with mlflow.start_run(run_name=f"drift_{int(time.time())}"):

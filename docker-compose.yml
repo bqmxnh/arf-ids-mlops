@@ -1,26 +1,62 @@
-version: "3.9"
+version: "3.8"
 
 services:
-  # MLflow Tracking Server
+  # =========================================================
+  # 1️⃣ MLflow Tracking Server
+  # =========================================================
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.17.0
-    container_name: mlflow_server
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlflow
     ports:
       - "5000:5000"
     volumes:
-      - ./mlruns:/mlruns
-    command: mlflow ui --host 0.0.0.0 --port 5000
+      - ./mlruns:/mlflow/mlruns
+      - ./models:/mlflow/models
+    restart: always
 
-  # IDS FastAPI Service
-  ids_api:
-    build: .
-    container_name: ids_api
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./models:/app/models
-      - ./src:/app/src
-    environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+  # =========================================================
+  # 2️⃣ ARF IDS API (FastAPI)
+  # =========================================================
+  arf-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arf-api
     depends_on:
       - mlflow
+    ports:
+      - "80:8000"
+    volumes:
+      - ./models:/app/models
+      - ./dataset:/app/dataset
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    restart: always
+
+  # =========================================================
+  # 3️⃣ Prometheus Monitoring
+  # =========================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: always
+
+  # =========================================================
+  # 4️⃣ Grafana Visualization
+  # =========================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+    restart: always

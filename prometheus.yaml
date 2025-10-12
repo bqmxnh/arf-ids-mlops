@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  # =========================================================
+  # 1️⃣ ARF IDS API metrics
+  # =========================================================
+  - job_name: "arf_ids_api"
+    static_configs:
+      - targets: ["arf-api:8000"]
+
+  # =========================================================
+  # 2️⃣ Prometheus self-monitoring
+  # =========================================================
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

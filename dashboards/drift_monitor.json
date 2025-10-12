@@ -1,0 +1,36 @@
+{
+  "id": null,
+  "title": "ARF IDS Drift Monitor",
+  "tags": ["arf", "ids", "drift"],
+  "timezone": "browser",
+  "schemaVersion": 30,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Prediction Latency (ms)",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(prediction_latency_ms_bucket[1m])) by (le))" }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 7 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Drift Detected Count",
+      "targets": [{ "expr": "increase(drift_detected_total[1m])" }],
+      "gridPos": { "x": 0, "y": 7, "w": 12, "h": 7 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Total Prediction Requests",
+      "targets": [{ "expr": "increase(prediction_requests_total[1m])" }],
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 7 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Model Update Counter",
+      "targets": [{ "expr": "model_updates_total" }],
+      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 7 }
+    }
+  ]
+}
