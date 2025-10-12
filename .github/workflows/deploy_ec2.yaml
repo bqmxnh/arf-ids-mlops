@@ -1,0 +1,31 @@
+name: Auto Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Cho phép chạy thủ công từ GitHub UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            echo "🔹 Pulling latest code..."
+            cd ~/arf-ids-mlops || (git clone https://github.com/${{ github.repository }} ~/arf-ids-mlops && cd ~/arf-ids-mlops)
+            git fetch origin main
+            git reset --hard origin/main
+            echo "🔹 Rebuilding and restarting containers..."
+            docker-compose down
+            docker-compose up -d --build
+            echo "Deployment completed successfully."
