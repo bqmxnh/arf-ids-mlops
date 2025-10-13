@@ -4,12 +4,13 @@ import joblib, mlflow, pandas as pd
 from pathlib import Path
 import time, sys
 
-# Paths setup
+# ============================================================
+# 1. Path setup
+# ============================================================
 csv_path = Path("dataset/balanced_syn_cleaned.csv")
 models_dir = Path("models")
 mlruns_dir = Path("mlruns")
 
-# Ensure directories exist
 models_dir.mkdir(parents=True, exist_ok=True)
 mlruns_dir.mkdir(parents=True, exist_ok=True)
 
@@ -17,34 +18,48 @@ print(f"Dataset: {csv_path}")
 print(f"Saving model to: {models_dir}")
 print(f"MLflow logs will be saved to: {mlruns_dir.resolve()}")
 
-# Load dataset
+# ============================================================
+# 2. Load dataset
+# ============================================================
 try:
     data = pd.read_csv(csv_path)
 except FileNotFoundError:
-    print(f"Dataset not found: {csv_path}")
+    print(f"Error: Dataset not found at {csv_path}")
     sys.exit(1)
 
 if "Label" not in data.columns:
-    print("Dataset missing 'Label' column!")
+    print("Error: Dataset missing 'Label' column.")
     sys.exit(1)
 
 X = data.drop(columns=["Label"])
 y = data["Label"]
 
-# Label Encoding
+# ============================================================
+# 3. Label Encoding
+# ============================================================
 encoder = LabelEncoder()
 y_encoded = encoder.fit_transform(y)
 
-# MLflow setup (safe for GitHub Actions / Docker)
-mlflow.set_tracking_uri("http://mlflow:5000")
+# ============================================================
+# 4. MLflow setup
+# ============================================================
+mlflow.set_tracking_uri("http://mlflow:5000")  # hoặc file:///mlruns nếu chạy local
 mlflow.set_experiment("IDS_ARF_Base")
 
-# Model initialization
+# ============================================================
+# 5. Model & Metrics initialization
+# ============================================================
 scaler = preprocessing.StandardScaler()
 model = forest.ARFClassifier(n_models=10, seed=42)
-metric = metrics.Accuracy()
 
-# Training loop
+metric_acc = metrics.Accuracy()
+metric_prec = metrics.Precision()
+metric_rec = metrics.Recall()
+metric_f1 = metrics.F1()
+
+# ============================================================
+# 6. Training loop (Prequential Test-Then-Train)
+# ============================================================
 with mlflow.start_run(run_name=f"base_{int(time.time())}"):
     mlflow.log_param("dataset_path", str(csv_path))
     mlflow.log_param("algorithm", "AdaptiveRandomForest")
@@ -59,26 +74,45 @@ with mlflow.start_run(run_name=f"base_{int(time.time())}"):
         scaler.learn_one(xi)
         xi_scaled = scaler.transform_one(xi)
 
-        # Predict (skip first few warm-up samples)
+        # Predict after warm-up
         if i > 50:
             y_pred = model.predict_one(xi_scaled)
-            metric.update(yi, y_pred)
+            if y_pred is not None:
+                metric_acc.update(yi, y_pred)
+                metric_prec.update(yi, y_pred)
+                metric_rec.update(yi, y_pred)
+                metric_f1.update(yi, y_pred)
 
-        # Learn incrementally
+        # Incremental learning
         model.learn_one(xi_scaled, yi)
 
-        # Log intermediate metrics
+        # Log intermediate progress
         if i % 10000 == 0:
-            acc = metric.get()
+            acc = metric_acc.get()
+            f1 = metric_f1.get()
             mlflow.log_metric("progress_acc", acc, step=i)
-            print(f"Processed {i:,} samples | Accuracy: {acc:.4f}")
+            mlflow.log_metric("progress_f1", f1, step=i)
+            print(f"Processed {i:,} samples | Accuracy: {acc:.4f} | F1: {f1:.4f}")
 
-    # Final metric
-    final_acc = metric.get()
+    # Final metrics
+    final_acc = metric_acc.get()
+    final_prec = metric_prec.get()
+    final_rec = metric_rec.get()
+    final_f1 = metric_f1.get()
+
     mlflow.log_metric("final_acc", final_acc)
-    print(f"Final Accuracy: {final_acc:.4f}")
+    mlflow.log_metric("final_precision", final_prec)
+    mlflow.log_metric("final_recall", final_rec)
+    mlflow.log_metric("final_f1", final_f1)
 
-# Save artifacts (model, scaler, encoder)
+    print(f"Final Accuracy: {final_acc:.4f}")
+    print(f"Final Precision: {final_prec:.4f}")
+    print(f"Final Recall: {final_rec:.4f}")
+    print(f"Final F1-score: {final_f1:.4f}")
+
+# ============================================================
+# 7. Save artifacts (model, scaler, encoder)
+# ============================================================
 model_path = models_dir / "arf_base.pkl"
 scaler_path = models_dir / "scaler.pkl"
 encoder_path = models_dir / "label_encoder.pkl"
