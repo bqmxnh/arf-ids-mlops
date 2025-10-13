@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   # =========================================================
-  # 1️⃣ MLflow Tracking Server
+  # MLflow Tracking Server
   # =========================================================
   mlflow:
     build:
@@ -12,12 +12,18 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./mlruns:/mlflow/mlruns
-      - ./models:/mlflow/models
+      - ./mlruns:/mlruns              
+      - ./models:/models             
+    command: >
+      mlflow ui
+      --backend-store-uri file:///mlruns
+      --default-artifact-root file:///mlruns
+      --host 0.0.0.0
+      --port 5000
     restart: always
 
   # =========================================================
-  # 2️⃣ ARF IDS API (FastAPI)
+  # ARF IDS API (FastAPI)
   # =========================================================
   arf-api:
     build:
@@ -31,12 +37,13 @@ services:
     volumes:
       - ./models:/app/models
       - ./dataset:/app/dataset
+      - ./mlruns:/mlruns             
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     restart: always
 
   # =========================================================
-  # 3️⃣ Prometheus Monitoring
+  # Prometheus Monitoring
   # =========================================================
   prometheus:
     image: prom/prometheus:latest
@@ -48,7 +55,7 @@ services:
     restart: always
 
   # =========================================================
-  # 4️⃣ Grafana Visualization
+  # Grafana Visualization
   # =========================================================
   grafana:
     image: grafana/grafana:latest
@@ -59,4 +66,5 @@ services:
       - prometheus
     volumes:
       - ./grafana_data:/var/lib/grafana
+    user: "472"                    
     restart: always
