@@ -66,5 +66,5 @@ services:
       - prometheus
     volumes:
       - ./grafana_data:/var/lib/grafana
-    user: "472"                    
+    user: "472:472"                    
     restart: always
