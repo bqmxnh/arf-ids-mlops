@@ -28,7 +28,7 @@ jobs:
             echo "Drift detected!"
             echo "drift_found=true" >> $GITHUB_ENV
           else
-            echo "No drift."
+            echo "No drift detected."
             echo "drift_found=false" >> $GITHUB_ENV
           fi
 
@@ -45,12 +45,9 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add models/
-          git commit -m "Auto retrain after drift $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
+          git commit -m "Auto retrain after drift $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
 
-      # =====================================================
-      # SSH vào EC2 để redeploy Docker stack
-      # =====================================================
       - name: Deploy updated stack to EC2
         if: env.drift_found == 'true'
         uses: appleboy/ssh-action@v1.0.0
