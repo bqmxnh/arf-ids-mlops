@@ -65,6 +65,9 @@ services:
     depends_on:
       - prometheus
     volumes:
-      - ./grafana_data:/var/lib/grafana
-    user: "472:472"                    
+    - ./grafana_data:/var/lib/grafana
+    user: "472:472"
+    environment:
+    - GF_PATHS_DATA=/var/lib/grafana
+    - GF_PATHS_PLUGINS=/var/lib/grafana/plugins        
     restart: always
