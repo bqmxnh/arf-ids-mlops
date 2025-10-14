@@ -9,7 +9,7 @@ from prometheus_client import Counter, Histogram, Gauge, generate_latest
 # ============================================================
 # FastAPI Setup
 # ============================================================
-app = FastAPI(title="ARF IDS API", version="3.3")
+app = FastAPI(title="ARF IDS API", version="3.5")
 
 # ============================================================
 # Paths & Model Loading
@@ -38,7 +38,7 @@ update_counter = 0
 ADWIN = drift.ADWIN(delta=0.002)
 
 def monitor(value: float) -> bool:
-    """Kiểm tra drift; nếu phát hiện, tạo flag để retrain."""
+    """Theo dõi drift dựa trên confidence trung bình."""
     ADWIN.update(value)
     if ADWIN.drift_detected:
         print("Drift detected!")
@@ -66,10 +66,9 @@ def metrics():
 # ============================================================
 class Flow(BaseModel):
     features: dict
-    label: str | None = None  # optional ground truth
 
 # ============================================================
-# Predict + Online Learn Endpoint
+# Predict + Online Learn (Pseudo-label only)
 # ============================================================
 @app.post("/predict")
 def predict(flow: Flow):
@@ -85,7 +84,6 @@ def predict(flow: Flow):
             if not proba:
                 return {"error": "Model returned empty probabilities."}
 
-            # Lấy nhãn dự đoán và độ tin cậy
             y_pred = max(proba, key=proba.get)
             confidence = proba[y_pred]
             y_label = encoder.inverse_transform([int(y_pred)])[0]
@@ -96,38 +94,28 @@ def predict(flow: Flow):
             if drift_flag:
                 DRIFT_COUNT.inc()
 
-            # --- Kiểm tra độ tin cậy và nhãn thật (nếu có) ---
+            # --- Học nếu confidence đủ cao ---
             if confidence > 0.95:
-                # Nếu có nhãn thật → dùng nhãn thật để học
-                if flow.label:
-                    y_true = encoder.transform([flow.label])[0]
-                    used_label = flow.label
-                    is_pseudo = False
-                else:
-                    # Nếu không có → học bằng pseudo-label (vì confidence cao)
-                    y_true = int(y_pred)
-                    used_label = y_label
-                    is_pseudo = True
-
+                y_true = int(y_pred)  # pseudo-label
                 model.learn_one(x_scaled, y_true)
                 update_counter += 1
                 UPDATE_GAUGE.set(update_counter)
 
-                # Lưu log các mẫu đã học
+                # Log mẫu đã học (chỉ feature + label)
                 STREAM_LOG.parent.mkdir(exist_ok=True)
                 with open(STREAM_LOG, "a", newline="") as f:
                     writer = csv.writer(f)
                     if f.tell() == 0:
                         writer.writerow(list(flow.features.keys()) + ["Label"])
-                    writer.writerow(list(flow.features.values()) + [used_label, round(confidence, 4)])
+                    writer.writerow(list(flow.features.values()) + [y_label])
             else:
-                # Nếu không đủ tin cậy → log vào file chờ gán nhãn
+                # Log mẫu không đủ tin cậy (chỉ feature)
                 UNLABELED_LOG.parent.mkdir(exist_ok=True)
                 with open(UNLABELED_LOG, "a", newline="") as f:
                     writer = csv.writer(f)
                     if f.tell() == 0:
                         writer.writerow(list(flow.features.keys()))
-                    writer.writerow(list(flow.features.values()) + [round(confidence, 4)])
+                    writer.writerow(list(flow.features.values()))
 
             # --- Định kỳ lưu model ---
             if update_counter > 0 and update_counter % 100 == 0:
@@ -142,7 +130,6 @@ def predict(flow: Flow):
             "confidence": round(confidence, 4),
             "drift_detected": drift_flag,
             "learned": confidence > 0.95,
-            "is_pseudo": flow.label is None,
             "latency_ms": round(latency_ms, 3),
             "updates": update_counter
         }
@@ -158,6 +145,7 @@ def root():
     return {
         "status": "running",
         "model": "Adaptive Random Forest IDS",
-        "version": "3.3",
+        "version": "3.5",
         "updates": update_counter,
+        "pseudo_label_only": True
     }
