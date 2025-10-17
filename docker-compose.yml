@@ -1,29 +1,27 @@
 version: "3.8"
 
 services:
-  # =========================================================
-  # MLflow Tracking Server
+    # =========================================================
+  # MLflow Tracking Server (fixed for MLflow >=2.12)
   # =========================================================
   mlflow:
-    build:
-      context: .
-      dockerfile: Dockerfile.mlflow
+    image: ghcr.io/mlflow/mlflow:v2.14.1
     container_name: mlflow
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./mlruns:/mlruns
-      - ./models:/models
-    environment:
-      - GUNICORN_CMD_ARGS=--forwarded-allow-ips="*" --proxy-allow-from="*" --allow-hosts="*"
     command: >
       mlflow ui
       --backend-store-uri file:///mlruns
       --default-artifact-root file:///mlruns
       --host 0.0.0.0
       --port 5000
-      --gunicorn-opts "--forwarded-allow-ips='*' --proxy-allow-from='*' --allow-hosts='*'"
+      --cors-allowed-origins="*"
+      --gunicorn-opts="--timeout 180"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+      - ./models:/models
     restart: always
+
 
   # =========================================================
   # ARF IDS API (FastAPI)
