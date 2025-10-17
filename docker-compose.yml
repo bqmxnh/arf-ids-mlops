@@ -13,7 +13,7 @@ services:
       - "5000:5000"
     volumes:
       - ./mlruns:/mlruns              
-      - ./models:/models             
+      - ./models:/models              
     command: >
       mlflow ui
       --backend-store-uri file:///mlruns
@@ -37,7 +37,7 @@ services:
     volumes:
       - ./models:/app/models
       - ./dataset:/app/dataset
-      - ./mlruns:/mlruns             
+      - ./mlruns:/mlruns
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     restart: always
@@ -52,7 +52,17 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     restart: always
+
+  # =========================================================
+  # Grafana Initialization (auto fix permission if bind mount)
+  # =========================================================
+  grafana-init:
+    image: busybox
+    command: chown -R 472:472 /var/lib/grafana
+    volumes:
+      - ./grafana_data:/var/lib/grafana
 
   # =========================================================
   # Grafana Visualization
@@ -64,10 +74,18 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+      - grafana-init
     volumes:
-    - ./grafana_data:/var/lib/grafana
-    user: "472:472"
+      - ./grafana_data:/var/lib/grafana
+    user: "472"
     environment:
-    - GF_PATHS_DATA=/var/lib/grafana
-    - GF_PATHS_PLUGINS=/var/lib/grafana/plugins        
+      - GF_PATHS_DATA=/var/lib/grafana
+      - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
     restart: always
+
+# =========================================================
+# Docker-managed Volumes (persistent, no permission issues)
+# =========================================================
+volumes:
+  grafana_data:
+  prometheus_data:
