@@ -4,7 +4,7 @@ services:
   # =========================================================
   # MLflow Tracking Server
   # =========================================================
-    mlflow:
+  mlflow:
     build:
       context: .
       dockerfile: Dockerfile.mlflow
@@ -24,6 +24,7 @@ services:
       --port 5000
       --gunicorn-opts "--forwarded-allow-ips='*' --proxy-allow-from='*' --allow-hosts='*'"
     restart: always
+
   # =========================================================
   # ARF IDS API (FastAPI)
   # =========================================================
